@@ -1,9 +1,12 @@
 const { jar } = require('request');
 var rp = require('request-promise');
 var tough = require('tough-cookie');
+const fs = require('fs-extra');
+const zlib = require('zlib');
 
 var Cookie = tough.Cookie;
 var cookiejar = rp.jar();
+let baseUrl = 'https://url.publishedprices.co.il/';
 var loginOptions = {
     method: 'POST',
     uri: 'https://url.publishedprices.co.il/login/user',
@@ -33,7 +36,17 @@ rp(loginOptions)
         // POST succeeded...
 
         rp(dataOption).then(function (data) {
-            console.log(JSON.parse(data))
+            JSON.parse(data).aaData.map(file=>{
+                // console.log(`${baseUrl}file/d/${file.name}`)
+                rp(`${baseUrl}file/d/${file.name}`, {jar: cookiejar, resolveWithFullResponse: true, encoding: "binary", method: 'GET'}).then(res=>{
+                    const tmpPath = `${__dirname}/${file.name}`;
+                    // console.log(res.body)
+                    fs.writeFile(tmpPath, res.body, 'binary');
+                    // zlib.gunzip( res.body, (err, dezipped) => {
+                    //     callback(dezipped)
+                    //   })
+                })
+            })
         }).catch(function (e) {
             // POST failed...
 
@@ -47,3 +60,8 @@ rp(loginOptions)
 
         // console.log(err)
     });
+
+
+    function callback(str){
+        console.log(str)
+    }
