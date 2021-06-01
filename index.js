@@ -2,7 +2,7 @@ const { jar } = require('request');
 var rp = require('request-promise');
 var tough = require('tough-cookie');
 const fs = require('fs-extra');
-const zlib = require('zlib');
+const gunzip = require('gunzip-file')
 
 var Cookie = tough.Cookie;
 var cookiejar = rp.jar();
@@ -21,7 +21,6 @@ var dataOption = {
     method: 'POST',
     headers: {
         'Referer': 'https://url.publishedprices.co.il/file',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
     },
     simple: false,
     jar: cookiejar,
@@ -36,15 +35,23 @@ rp(loginOptions)
         // POST succeeded...
 
         rp(dataOption).then(function (data) {
-            JSON.parse(data).aaData.map(file=>{
+            const tmpFolder = new Date().getTime();
+            fs.mkdir(`${__dirname}/${tmpFolder}`, { recursive: true });
+            fs.mkdir(`${__dirname}/${tmpFolder}Unzip`, { recursive: true });
+            JSON.parse(data).aaData.map(file => {
                 // console.log(`${baseUrl}file/d/${file.name}`)
-                rp(`${baseUrl}file/d/${file.name}`, {jar: cookiejar, resolveWithFullResponse: true, encoding: "binary", method: 'GET'}).then(res=>{
-                    const tmpPath = `${__dirname}/${file.name}`;
+                rp(`${baseUrl}file/d/${file.name}`, { jar: cookiejar, resolveWithFullResponse: true, encoding: "binary", method: 'GET' }).then(res => {
+                    const tmpPath = `${__dirname}/${tmpFolder}/${file.name}`;
+
                     // console.log(res.body)
-                    fs.writeFile(tmpPath, res.body, 'binary');
-                    // zlib.gunzip( res.body, (err, dezipped) => {
-                    //     callback(dezipped)
-                    //   })
+                    fs.writeFile(tmpPath, res.body, 'binary', function (err) {
+                        if (file.name.endsWith('.gz')) {
+                            gunzip(tmpPath, `${__dirname}/${tmpFolder}Unzip/${file.name.replace('.gz', '.xml')}`, () => {
+
+                            })
+                        }
+                    });
+
                 })
             })
         }).catch(function (e) {
@@ -62,6 +69,6 @@ rp(loginOptions)
     });
 
 
-    function callback(str){
-        console.log(str)
-    }
+function callback(str) {
+    console.log(str)
+}
